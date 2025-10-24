@@ -1,0 +1,33 @@
+#!ipxe
+###
+### kube worker node
+### broadbeam
+###
+
+:start
+isset ${arch} && goto skip_arch_detect ||
+cpuid --ext 29 && set arch x86_64 || set arch i386
+iseq ${buildarch} arm64 && set arch arm64 ||
+:skip_arch_detect
+chain --autofree boot.cfg ||
+echo Attempting to retrieve latest upstream version number...
+chain --timeout 5000 https://boot.netboot.xyz/version.ipxe ||
+ntp 0.pool.ntp.org ||
+iseq ${cls} serial && goto ignore_cls ||
+set cls:hex 1b:5b:4a  # ANSI clear screen sequence - "^[[J"
+set cls ${cls:string}
+:ignore_cls
+
+:boot
+set os Fedora CoreOS
+set os_arch ${arch}
+iseq ${os_arch} x86_64 && set os_arch x86_64
+set coreos_channel stable
+set ignition_url http://internal.parkervcp.com/kubes.ign
+set install_device /dev/sda
+set base_url ${coreos_mirror}/${coreos_base_dir}/${coreos_channel}/builds
+set build_version 42.20250901.3.0
+imgfree
+kernel ${base_url}/${build_version}/${os_arch}/fedora-coreos-${build_version}-live-kernel-${os_arch} ip=dhcp rd.neednet=1 coreos.inst.install_dev=${install_device} coreos.inst.ignition_url=${ignition_url} coreos.live.rootfs_url=${base_url}/${build_version}/${os_arch}/fedora-coreos-${build_version}-live-rootfs.${os_arch}.img initrd=initrd.magic ${cmdline}
+initrd ${base_url}/${build_version}/${os_arch}/fedora-coreos-${build_version}-live-initramfs.${os_arch}.img
+boot

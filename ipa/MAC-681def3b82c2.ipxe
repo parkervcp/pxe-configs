@@ -1,0 +1,40 @@
+#!ipxe
+###
+### ipa primary
+### ipa0
+###
+
+# if arch is not already set
+isset ${arch} && goto skip_arch_detect ||
+cpuid --ext 29 && set arch x86_64 || set arch i386
+iseq ${buildarch} arm64 && set arch arm64 ||
+chain --autofree boot.cfg ||
+# set ntp host
+ntp 10.0.69.1 ||
+iseq ${cls} serial && goto ignore_cls ||
+set cls:hex 1b:5b:4a  # ANSI clear screen sequence - "^[[J"
+set cls ${cls:string}
+
+# base values 
+set fedora_mirror http://mirrors.kernel.org
+set fedora_base_dir fedora
+
+# Set OS, version, type, and mode to install
+set os Fedora
+set osversion 42
+set sku_type Server
+set os_arch ${arch}
+set install_mode inst.text
+
+# set kickstart
+set ks_url http://internal.parkervcp.com/ipa0.ks
+set params inst.ks=${ks_url}
+
+# location on the remote server to install from
+# should be fedora/releases/40/Server/x86_64/os
+set dir ${fedora_base_dir}/releases/${osversion}/${sku_type}/${os_arch}/os
+
+imgfree
+kernel ${fedora_mirror}/${dir}/images/pxeboot/vmlinuz inst.repo=${fedora_mirror}/${dir} ${install_mode} ${params} ${ipparam} initrd=initrd.magic ${cmdline}
+initrd ${fedora_mirror}/${dir}/images/pxeboot/initrd.img
+boot
